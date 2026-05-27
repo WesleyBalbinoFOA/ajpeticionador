@@ -1,0 +1,5 @@
+Coloque aqui os arquivos .docx de modelos de CITAÇÃO:
+- NOME DO DEVEDOR - CITAÇÃO POR OJA.docx
+- NOME DO DEVEDOR - CITAÇÃO POSTAL.docx
+- NOME DO DEVEDOR - RENOVAÇÃO DE OJA.docx
+- NOME DO DEVEDOR - CITAÇÃO ELETRÔNICA.docx

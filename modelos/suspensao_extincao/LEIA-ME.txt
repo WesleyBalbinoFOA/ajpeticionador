@@ -1,0 +1,4 @@
+Coloque aqui os arquivos .docx de modelos de SUSPENSÃO/EXTINÇÃO:
+- NOME DO DEVEDOR - SUSPENSÃO.docx
+- NOME DO DEVEDOR - EXTINÇÃO.docx
+- NOME DO DEVEDOR - BAIXA DE RESTRIÇÕES.docx

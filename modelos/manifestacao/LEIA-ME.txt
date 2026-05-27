@@ -1,0 +1,5 @@
+Coloque aqui os arquivos .docx de modelos de MANIFESTAÇÃO:
+- NOME DO DEVEDOR - MANIFESTAÇÃO.docx
+- NOME DO DEVEDOR - IMPUGNAÇÃO.docx
+- NOME DO DEVEDOR - PRESCRIÇÃO.docx
+- NOME DO DEVEDOR - REITERAR PETIÇÃO.docx

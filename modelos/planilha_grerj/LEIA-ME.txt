@@ -1,0 +1,4 @@
+Coloque aqui os arquivos .docx de modelos de PLANILHA/GRERJ:
+- NOME DO DEVEDOR - PLANILHA + GRERJ.docx
+- NOME DO DEVEDOR - PLANILHA.docx
+- NOME DO DEVEDOR - JUNTADA DE PLANILHA.docx
