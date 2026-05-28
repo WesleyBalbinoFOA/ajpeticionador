@@ -1,16 +1,19 @@
 // frontend/src/services/api.js
 import axios from 'axios'
 
-const http = axios.create({ baseURL: '/api', timeout: 60000 })
+// Em produção usa a URL do Render, em dev usa proxy local
+const BASE_URL = import.meta.env.VITE_API_URL
+  ? import.meta.env.VITE_API_URL
+  : '/api'
 
-// Injeta JWT automaticamente em todas as requisições
+const http = axios.create({ baseURL: BASE_URL, timeout: 60000 })
+
 http.interceptors.request.use(config => {
   const token = localStorage.getItem('peticiona_token')
   if (token) config.headers.Authorization = `Bearer ${token}`
   return config
 })
 
-// Se 401, limpa token e redireciona para login
 http.interceptors.response.use(
   r => r,
   err => {
@@ -24,7 +27,6 @@ http.interceptors.response.use(
 )
 
 export const api = {
-  // Auth
   async login(email, senha) {
     const { data } = await http.post('/auth/login', { email, senha })
     localStorage.setItem('peticiona_token',   data.token)
@@ -42,7 +44,6 @@ export const api = {
     return u ? JSON.parse(u) : null
   },
 
-  // Processos
   async uploadExcel(arquivo) {
     const form = new FormData()
     form.append('arquivo', arquivo)
@@ -50,13 +51,11 @@ export const api = {
     return data
   },
 
-  // Petições
   async gerarLote(processos) {
     const { data } = await http.post('/peticoes/gerar-lote', processos.map(p => ({ processo: p })))
     return data
   },
 
-  // Exportação
   async baixarDocx(numero, conteudo, parte_contraria) {
     const resp = await http.post('/exportar/docx', { numero, conteudo, parte_contraria }, { responseType: 'blob' })
     _download(resp, `peticao_${numero.replace(/\//g,'-')}.docx`)
@@ -67,12 +66,10 @@ export const api = {
     _download(resp, `peticao_${numero.replace(/\//g,'-')}.pdf`)
   },
 
-  // Histórico RLHF
   async salvarHistorico(registro) {
     try {
       await http.post('/historico', registro)
     } catch {
-      // fallback localStorage
       const h = JSON.parse(localStorage.getItem('peticiona_historico') || '[]')
       h.push({ ...registro, data: new Date().toISOString() })
       localStorage.setItem('peticiona_historico', JSON.stringify(h))
