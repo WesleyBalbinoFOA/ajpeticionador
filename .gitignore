@@ -40,8 +40,7 @@ backend/uploads/
 
 # Modelos gerados (não subir documentos de clientes)
 backend/outputs/
-*.docx
-*.pdf
+
 
 # IDEs
 .vscode/
