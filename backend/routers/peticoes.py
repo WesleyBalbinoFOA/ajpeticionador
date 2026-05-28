@@ -60,6 +60,7 @@ async def gerar_lote(request: Request, solicitacoes: list[SolicitacaoGeracao]):
                 "parte_contraria": s.processo.parte_contraria,  # ← adicionado
                 "status": "gerada",
                 "conteudo": conteudo,
+                "parte_contraria": s.processo.parte_contraria,
                 "modelo_usado": modelo_nome,
             })
         except Exception as e:

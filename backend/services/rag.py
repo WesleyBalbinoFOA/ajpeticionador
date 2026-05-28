@@ -1,82 +1,73 @@
 # backend/services/rag.py
-# Indexa modelos de petição e identifica o mais adequado por similaridade
+# Busca semantica usando ChromaDB diretamente — sem LlamaIndex
 
-import os
 from pathlib import Path
-from llama_index.core import VectorStoreIndex, SimpleDirectoryReader, StorageContext
-from llama_index.vector_stores.chroma import ChromaVectorStore
 import chromadb
 from core.config import get_settings
 
 settings = get_settings()
 
 CHROMA_PATH = "./chroma_db"
-COLLECTION = "modelos_peticao"
+COLLECTION  = "modelos_peticao"
 
-# Cliente ChromaDB e coleção (singleton)
-_chroma_client = chromadb.PersistentClient(path=CHROMA_PATH)
-_collection = _chroma_client.get_or_create_collection(COLLECTION)
-_vector_store = ChromaVectorStore(chroma_collection=_collection)
-_index = None
+_client     = None
+_collection = None
 
 
-def _carregar_index() -> VectorStoreIndex:
-    """Carrega o índice existente do ChromaDB."""
-    global _index
-    if _index is None:
-        storage_context = StorageContext.from_defaults(vector_store=_vector_store)
-        _index = VectorStoreIndex.from_vector_store(
-            _vector_store,
-            storage_context=storage_context,
-        )
-    return _index
+def _get_collection():
+    global _client, _collection
+    if _collection is None:
+        _client     = chromadb.PersistentClient(path=CHROMA_PATH)
+        _collection = _client.get_or_create_collection(COLLECTION)
+    return _collection
 
 
 def identificar_modelo(descricao: str, forcar: str | None = None) -> tuple[str, str]:
     """
-    Busca o modelo de petição mais similar à descrição da tarefa.
+    Busca o modelo mais similar à descrição.
     Retorna (nome_modelo, texto_modelo).
     """
     modelos_path = Path(settings.modelos_path)
 
-    # Modo forçado: busca o arquivo diretamente
+    # Modo forçado
     if forcar:
         for docx in modelos_path.rglob("*.docx"):
             if forcar.lower() in docx.stem.lower():
                 return docx.stem, _ler_docx(docx)
         return forcar, ""
 
-    # RAG: busca semântica
+    # Busca semantica no ChromaDB
     try:
-        index = _carregar_index()
-        engine = index.as_retriever(similarity_top_k=1)
-        resultados = engine.retrieve(descricao)
+        col = _get_collection()
+        resultados = col.query(
+            query_texts=[descricao],
+            n_results=1,
+        )
+        if resultados and resultados["documents"] and resultados["documents"][0]:
+            meta  = resultados["metadatas"][0][0]
+            texto = resultados["documents"][0][0]
+            nome  = meta.get("file_name", "desconhecido")
+            return nome, texto
+    except Exception as e:
+        print(f"[RAG] Erro na busca semantica: {e}")
 
-        if resultados:
-            node = resultados[0]
-            nome = node.metadata.get("file_name", "desconhecido")
-            return nome, node.get_content()
-    except Exception:
-        pass
-
-    # Fallback: busca por palavra-chave simples
+    # Fallback: busca por palavra-chave
     return _busca_keyword(descricao, modelos_path)
 
 
 def _busca_keyword(descricao: str, modelos_path: Path) -> tuple[str, str]:
-    """Fallback simples: procura arquivo cujo nome contenha palavras da descrição."""
     desc_upper = descricao.upper()
-    palavras = [p for p in desc_upper.split() if len(p) > 4]
+    palavras   = [p for p in desc_upper.split() if len(p) > 4]
 
-    melhor = None
+    melhor       = None
     melhor_score = 0
 
     for docx in modelos_path.rglob("*.docx"):
         nome_upper = docx.stem.upper()
-        score = sum(1 for p in palavras if p in nome_upper)
+        score      = sum(1 for p in palavras if p in nome_upper)
         if score > melhor_score:
             melhor_score = score
-            melhor = docx
+            melhor       = docx
 
     if melhor:
         return melhor.stem, _ler_docx(melhor)
@@ -84,7 +75,6 @@ def _busca_keyword(descricao: str, modelos_path: Path) -> tuple[str, str]:
 
 
 def _ler_docx(path: Path) -> str:
-    """Extrai texto de um .docx."""
     try:
         from docx import Document
         doc = Document(str(path))

@@ -2,28 +2,116 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Customizações globais mínimas */
-body {
-  @apply bg-gray-50 text-gray-800;
-  font-family: 'Segoe UI', system-ui, sans-serif;
+/* =============================================
+   PeticIona AI — FOA Design System
+   Cores: Azul FOA #003087 | Dourado #C9A84C
+   Fonte: Playfair Display + DM Sans
+   ============================================= */
+
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=DM+Sans:wght@300;400;500;600&display=swap');
+
+:root {
+  --foa-navy:    #003087;
+  --foa-blue:    #0051A5;
+  --foa-gold:    #C9A84C;
+  --foa-gold-lt: #E8D49A;
+  --foa-white:   #FFFFFF;
+  --foa-gray:    #F4F6FA;
+  --foa-border:  #DDE3EF;
+  --foa-text:    #1A2340;
+  --foa-muted:   #6B7A9A;
 }
 
-.btn-primary {
-  @apply bg-blue-700 hover:bg-blue-800 text-white font-medium py-2 px-4 rounded-lg transition-colors;
+* { box-sizing: border-box; }
+
+body {
+  font-family: 'DM Sans', sans-serif;
+  background-color: var(--foa-gray);
+  color: var(--foa-text);
+  margin: 0;
 }
+
+/* ---- Tipografia ---- */
+h1, h2, h3 { font-family: 'Playfair Display', serif; }
+
+/* ---- Cards ---- */
+.card {
+  background: var(--foa-white);
+  border-radius: 12px;
+  border: 1px solid var(--foa-border);
+  padding: 1.5rem;
+  box-shadow: 0 2px 8px rgba(0,48,135,0.06);
+}
+
+/* ---- Botões ---- */
+.btn-primary {
+  background: var(--foa-navy);
+  color: white;
+  font-family: 'DM Sans', sans-serif;
+  font-weight: 500;
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+  transition: background 0.2s;
+  font-size: 0.875rem;
+}
+.btn-primary:hover { background: var(--foa-blue); }
+.btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
 
 .btn-secondary {
-  @apply bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium py-2 px-4 rounded-lg transition-colors;
+  background: var(--foa-gray);
+  color: var(--foa-navy);
+  font-family: 'DM Sans', sans-serif;
+  font-weight: 500;
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+  border: 1px solid var(--foa-border);
+  cursor: pointer;
+  transition: background 0.2s;
+  font-size: 0.875rem;
 }
+.btn-secondary:hover { background: var(--foa-border); }
 
 .btn-success {
-  @apply bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-4 rounded-lg transition-colors;
+  background: #1A6B3C;
+  color: white;
+  font-family: 'DM Sans', sans-serif;
+  font-weight: 500;
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+  transition: background 0.2s;
+  font-size: 0.875rem;
 }
+.btn-success:hover { background: #145530; }
+.btn-success:disabled { opacity: 0.5; cursor: not-allowed; }
 
 .btn-danger {
-  @apply bg-red-600 hover:bg-red-700 text-white font-medium py-2 px-4 rounded-lg transition-colors;
+  background: #C0392B;
+  color: white;
+  font-family: 'DM Sans', sans-serif;
+  font-weight: 500;
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+  transition: background 0.2s;
+  font-size: 0.875rem;
 }
+.btn-danger:hover { background: #A93226; }
 
-.card {
-  @apply bg-white rounded-xl shadow-sm border border-gray-200 p-6;
+.btn-gold {
+  background: var(--foa-gold);
+  color: var(--foa-navy);
+  font-family: 'DM Sans', sans-serif;
+  font-weight: 600;
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+  transition: background 0.2s;
+  font-size: 0.875rem;
 }
+.btn-gold:hover { background: var(--foa-gold-lt); }

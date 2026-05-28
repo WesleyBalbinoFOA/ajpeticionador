@@ -1,14 +1,16 @@
 # backend/services/gemini.py
-# Geração de petições com Groq (principal) + Gemini (fallback)
 
 from groq import Groq
 import google.generativeai as genai
+from datetime import datetime
 from core.config import get_settings
+from core.advogados import buscar_advogado, ASSESSOR_JURIDICO
+from core.sanitizer import limpar_para_xml
 from models.schemas import Processo
+import re
 
 settings = get_settings()
 
-# Clientes (singleton via módulo)
 _groq = Groq(api_key=settings.groq_api_key) if settings.groq_api_key else None
 
 if settings.gemini_api_key:
@@ -18,71 +20,146 @@ else:
     _gemini = None
 
 SYSTEM_PROMPT = """Você é um advogado especialista em direito civil e execução fiscal no Brasil.
-Sua tarefa é adaptar o modelo de petição fornecido aos dados específicos do processo.
-Mantenha a linguagem jurídica formal, a estrutura e o estilo do modelo.
-Substitua apenas os dados variáveis (nomes, números, datas, fatos específicos).
-Retorne SOMENTE o texto da petição, sem explicações adicionais."""
+Redija APENAS os parágrafos intermediários da petição.
+NÃO inclua: endereçamento, qualificação das partes, número do processo, fecho, data, assinatura.
+Comece direto com a exposição dos fatos e fundamentos.
+Cada parágrafo separado por linha em branco.
+Linguagem jurídica formal. Máximo 3 parágrafos curtos e objetivos."""
 
 
-def _montar_prompt(processo: Processo, modelo_texto: str) -> str:
-    """Monta o prompt final para geração. Conciso para economizar tokens."""
-    return f"""DADOS DO PROCESSO:
-- Número: {processo.numero}
-- Parte Contrária: {processo.parte_contraria}
-- Vara/Órgão: {processo.vara_orgao}
-- Tipo de Tarefa: {processo.tipo_tarefa}
-- Instrução: {processo.descricao_solicitacao}
+def _data_extenso() -> str:
+    meses = {1:'janeiro',2:'fevereiro',3:'março',4:'abril',5:'maio',6:'junho',
+             7:'julho',8:'agosto',9:'setembro',10:'outubro',11:'novembro',12:'dezembro'}
+    hoje = datetime.now()
+    return f"Volta Redonda, {hoje.day} de {meses[hoje.month]} de {hoje.year}."
 
-MODELO BASE:
-{modelo_texto}
 
-Adapte o modelo acima aos dados do processo. Retorne apenas o texto da petição."""
+def _tipo_acao(modelo_texto: str, descricao: str) -> str:
+    """Detecta o tipo de ação a partir do modelo ou da descrição."""
+    texto = (modelo_texto + ' ' + descricao).upper()
+    tipos = [
+        'EXECUÇÃO DE TÍTULO EXTRAJUDICIAL',
+        'EXECUÇÃO FISCAL',
+        'AÇÃO DE COBRANÇA',
+        'AÇÃO MONITÓRIA',
+        'AÇÃO ORDINÁRIA',
+        'EXECUÇÃO',
+    ]
+    for t in tipos:
+        if t in texto:
+            return t
+    return 'EXECUÇÃO DE TÍTULO EXTRAJUDICIAL'
+
+
+def _prompt_corpo(processo: Processo, modelo_texto: str) -> str:
+    return f"""Instrução: {processo.descricao_solicitacao}
+Parte Contrária: {processo.parte_contraria}
+Vara: {processo.vara_orgao}
+
+Modelo de referência (siga o estilo e argumentação):
+{modelo_texto[:1200]}
+
+Redija apenas os parágrafos intermediários da petição — exposição dos fatos e pedido principal.
+NÃO repita a qualificação das partes nem inclua fecho.
+Separe parágrafos com linha em branco."""
+
+
+def _limpar_corpo(corpo: str) -> str:
+    """Remove elementos estruturais que a IA insistiu em incluir."""
+    corpo = limpar_para_xml(corpo)
+    # Remove linhas com elementos estruturais
+    linhas = []
+    for linha in corpo.split('\n'):
+        l = linha.strip()
+        if re.match(r'^Ao Douto', l, re.I): continue
+        if re.match(r'^Processo\s+n', l, re.I): continue
+        if re.match(r'^Volta Redonda', l, re.I): continue
+        if re.match(r'^P\.\s*Defer', l, re.I): continue
+        if re.match(r'^Nestes termos', l, re.I): continue
+        if re.match(r'OAB/RJ', l, re.I): continue
+        if re.match(r'^Advogado', l, re.I): continue
+        if re.match(r'FUNDAÇÃO OSWALDO ARANHA.*FOA.*vem', l, re.I): continue
+        linhas.append(linha)
+    return '\n'.join(linhas).strip()
+
+
+def _montar_peticao(processo: Processo, corpo: str, modelo_texto: str) -> str:
+    advogado  = buscar_advogado(processo.responsavel)
+    assessor  = ASSESSOR_JURIDICO
+    tipo_acao = _tipo_acao(modelo_texto, processo.descricao_solicitacao)
+    cliente   = (processo.cliente or 'FUNDAÇÃO OSWALDO ARANHA').upper()
+    if 'FOA' not in cliente and 'FUNDAÇÃO' in cliente:
+        cliente += ' – FOA'
+
+    parte = processo.parte_contraria.upper() if processo.parte_contraria else '[PARTE CONTRÁRIA]'
+
+    # Primeiro parágrafo fixo — qualificação
+    primeiro_paragrafo = (
+        f"{cliente}, devidamente qualificada nos autos da "
+        f"{tipo_acao} que move em face de {parte}, "
+        f"vem respeitosamente a presença de V. Exa., por intermédio de seu(a) procurador(a), "
+        f"expor e requerer o que segue."
+    )
+
+    # Parágrafo do assessor
+    paragrafo_assessor = (
+        f"Por fim, requer que as publicações e intimações eletrônicas sejam realizadas "
+        f"exclusivamente em nome do Assessor Jurídico da Fundação, "
+        f"{assessor['nome'].upper()} - {assessor['oab']}."
+    )
+
+    peticao = (
+        f"Ao Douto Juízo da {processo.vara_orgao} da Comarca de Volta Redonda – RJ.\n"
+        f"\n\n\n\n\n"
+        f"Processo nº {processo.numero}\n"
+        f"\n"
+        f"{primeiro_paragrafo}\n"
+        f"\n"
+        f"{corpo}\n"
+        f"\n"
+        f"{paragrafo_assessor}\n"
+        f"\n"
+        f"P. Deferimento.\n"
+        f"{_data_extenso()}\n"
+        f"\n\n\n\n\n"
+        f"{advogado['nome']}\n"
+        f"Advogado(a) FOA\n"
+        f"{advogado['oab']}"
+    )
+    return peticao
 
 
 async def gerar_peticao(processo: Processo, modelo_texto: str) -> str:
-    """
-    Gera petição com Groq (principal).
-    Se falhar, tenta Gemini como fallback.
-    """
-    prompt = _montar_prompt(processo, modelo_texto)
+    prompt = _prompt_corpo(processo, modelo_texto)
+    corpo  = None
 
-    # Tenta Groq primeiro
     if _groq:
         try:
-            resposta = _groq.chat.completions.create(
+            resp  = _groq.chat.completions.create(
                 model=settings.groq_model,
                 messages=[
                     {"role": "system", "content": SYSTEM_PROMPT},
-                    {"role": "user", "content": prompt}
+                    {"role": "user",   "content": prompt},
                 ],
                 temperature=settings.temperatura,
                 max_tokens=settings.max_tokens,
             )
-            return resposta.choices[0].message.content.strip()
+            corpo = resp.choices[0].message.content.strip()
         except Exception as e_groq:
-            # Fallback: Gemini
             if _gemini:
                 try:
-                    resposta = _gemini.generate_content(
-                        prompt,
-                        generation_config=genai.types.GenerationConfig(
-                            temperature=settings.temperatura,
-                            max_output_tokens=settings.max_tokens,
-                        )
-                    )
-                    return resposta.text.strip()
+                    corpo = _gemini.generate_content(prompt).text.strip()
                 except Exception as e_gemini:
-                    raise RuntimeError(
-                        f"Groq falhou: {e_groq} | Gemini falhou: {e_gemini}"
-                    )
-            raise RuntimeError(f"Groq falhou e Gemini não configurado: {e_groq}")
-
-    # Sem Groq — tenta só Gemini
-    if _gemini:
+                    raise RuntimeError(f"Groq: {e_groq} | Gemini: {e_gemini}")
+            else:
+                raise RuntimeError(f"Groq falhou: {e_groq}")
+    elif _gemini:
         try:
-            resposta = _gemini.generate_content(prompt)
-            return resposta.text.strip()
+            corpo = _gemini.generate_content(prompt).text.strip()
         except Exception as e:
             raise RuntimeError(f"Gemini falhou: {e}")
+    else:
+        raise RuntimeError("Nenhuma IA configurada.")
 
-    raise RuntimeError("Nenhuma IA configurada. Verifique GROQ_API_KEY no .env")
+    corpo = _limpar_corpo(corpo)
+    return _montar_peticao(processo, corpo, modelo_texto)

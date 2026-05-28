@@ -3,42 +3,33 @@ import { ref } from 'vue'
 import { api } from '../services/api.js'
 
 const props = defineProps({ processos: Array })
-const emit = defineEmits(['peticoes-geradas', 'voltar'])
+const emit  = defineEmits(['peticoes-geradas', 'voltar'])
 
 const selecionados = ref(new Set(props.processos.map(p => p.id)))
-const gerando = ref(false)
-const erro = ref('')
+const gerando      = ref(false)
+const progresso    = ref(0)
+const erro         = ref('')
 
 function toggleTodos(e) {
-  if (e.target.checked) {
-    selecionados.value = new Set(props.processos.map(p => p.id))
-  } else {
-    selecionados.value = new Set()
-  }
+  selecionados.value = e.target.checked
+    ? new Set(props.processos.map(p => p.id))
+    : new Set()
 }
-
 function toggle(id) {
-  if (selecionados.value.has(id)) {
-    selecionados.value.delete(id)
-  } else {
-    selecionados.value.add(id)
-  }
+  selecionados.value.has(id)
+    ? selecionados.value.delete(id)
+    : selecionados.value.add(id)
 }
 
 async function gerarPeticoes() {
   const lista = props.processos.filter(p => selecionados.value.has(p.id))
   if (!lista.length) return
-
-  gerando.value = true
-  erro.value = ''
+  gerando.value  = true
+  progresso.value = 0
+  erro.value     = ''
   try {
     const resultado = await api.gerarLote(lista)
-    // Aceita tanto {resultados: [...]} quanto array direto
-    const peticoes = resultado.resultados || resultado
-    if (!peticoes || peticoes.length === 0) {
-      erro.value = 'Nenhuma petição foi gerada.'
-      return
-    }
+    const peticoes  = resultado.resultados || resultado
     emit('peticoes-geradas', peticoes)
   } catch (e) {
     erro.value = e.response?.data?.detail || e.message || 'Erro ao gerar petições.'
@@ -50,60 +41,71 @@ async function gerarPeticoes() {
 
 <template>
   <div>
+    <!-- Cabeçalho -->
     <div class="flex items-center justify-between mb-6">
       <div>
-        <h2 class="text-xl font-bold text-gray-700">Processos encontrados</h2>
-        <p class="text-gray-500 text-sm">{{ processos.length }} processos importados</p>
+        <h2 class="text-2xl font-bold" style="color: var(--foa-navy); font-family: 'Playfair Display', serif">
+          Processos importados
+        </h2>
+        <p class="text-sm mt-1" style="color: var(--foa-muted)">
+          {{ processos.length }} processos encontrados ·
+          {{ selecionados.size }} selecionados
+        </p>
       </div>
       <div class="flex gap-3">
         <button class="btn-secondary" @click="emit('voltar')">← Voltar</button>
         <button
-          class="btn-primary"
+          class="btn-gold"
           :disabled="gerando || !selecionados.size"
           @click="gerarPeticoes"
         >
-          {{ gerando ? '⏳ Gerando...' : `⚙️ Gerar petições (${selecionados.size})` }}
+          <span v-if="gerando">⏳ Gerando petições...</span>
+          <span v-else>🤖 Gerar {{ selecionados.size }} petições</span>
         </button>
       </div>
     </div>
 
-    <p v-if="erro" class="mb-4 text-red-600 text-sm bg-red-50 rounded-lg p-3">
-      ❌ {{ erro }}
-    </p>
+    <!-- Erro -->
+    <p v-if="erro" class="mb-4 text-sm rounded-lg p-3"
+       style="color: #C0392B; background: #FDECEA">❌ {{ erro }}</p>
 
+    <!-- Tabela -->
     <div class="card p-0 overflow-hidden">
       <table class="w-full text-sm">
-        <thead class="bg-gray-50 border-b border-gray-200">
-          <tr>
-            <th class="p-3 w-8">
+        <thead>
+          <tr style="background: var(--foa-navy)">
+            <th class="p-3 w-10">
               <input type="checkbox" checked @change="toggleTodos" />
             </th>
-            <th class="p-3 text-left text-gray-600 font-medium">Número</th>
-            <th class="p-3 text-left text-gray-600 font-medium">Parte Contrária</th>
-            <th class="p-3 text-left text-gray-600 font-medium">Vara</th>
-            <th class="p-3 text-left text-gray-600 font-medium">Tipo de Tarefa</th>
-            <th class="p-3 text-left text-gray-600 font-medium">Descrição</th>
+            <th class="p-3 text-left text-xs font-medium uppercase tracking-wider text-blue-200">Número</th>
+            <th class="p-3 text-left text-xs font-medium uppercase tracking-wider text-blue-200">Parte Contrária</th>
+            <th class="p-3 text-left text-xs font-medium uppercase tracking-wider text-blue-200">Vara</th>
+            <th class="p-3 text-left text-xs font-medium uppercase tracking-wider text-blue-200">Tipo</th>
+            <th class="p-3 text-left text-xs font-medium uppercase tracking-wider text-blue-200">Descrição</th>
           </tr>
         </thead>
         <tbody>
           <tr
-            v-for="p in processos"
-            :key="p.id"
-            class="border-b border-gray-100 hover:bg-gray-50 transition-colors"
-            :class="!selecionados.has(p.id) ? 'opacity-50' : ''"
+            v-for="p in processos" :key="p.id"
+            class="transition-colors hover:bg-blue-50"
+            style="border-bottom: 1px solid var(--foa-border)"
+            :class="!selecionados.has(p.id) ? 'opacity-40' : ''"
           >
             <td class="p-3 text-center">
-              <input
-                type="checkbox"
-                :checked="selecionados.has(p.id)"
-                @change="toggle(p.id)"
-              />
+              <input type="checkbox"
+                     :checked="selecionados.has(p.id)"
+                     @change="toggle(p.id)" />
             </td>
-            <td class="p-3 font-mono text-xs text-blue-700">{{ p.numero }}</td>
-            <td class="p-3">{{ p.parte_contraria }}</td>
-            <td class="p-3 text-gray-500">{{ p.vara_orgao }}</td>
-            <td class="p-3 text-gray-500">{{ p.tipo_tarefa }}</td>
-            <td class="p-3 text-gray-600 max-w-xs truncate" :title="p.descricao_solicitacao">
+            <td class="p-3 font-mono text-xs font-bold" style="color: var(--foa-blue)">
+              {{ p.numero }}
+            </td>
+            <td class="p-3 font-medium text-xs" style="color: var(--foa-text)">
+              {{ p.parte_contraria }}
+            </td>
+            <td class="p-3 text-xs" style="color: var(--foa-muted)">{{ p.vara_orgao }}</td>
+            <td class="p-3 text-xs" style="color: var(--foa-muted)">{{ p.tipo_tarefa }}</td>
+            <td class="p-3 text-xs max-w-xs truncate" style="color: var(--foa-muted)"
+                :title="p.descricao_solicitacao">
               {{ p.descricao_solicitacao }}
             </td>
           </tr>

@@ -2,11 +2,11 @@
 import { ref } from 'vue'
 import { api } from '../services/api.js'
 
-const emit = defineEmits(['processos-extraidos'])
-
+const props  = defineProps({ usuario: Object })
+const emit   = defineEmits(['processos-extraidos'])
 const arrastando = ref(false)
 const carregando = ref(false)
-const erro = ref('')
+const erro       = ref('')
 
 async function processarArquivo(arquivo) {
   if (!arquivo) return
@@ -24,47 +24,72 @@ async function processarArquivo(arquivo) {
 
 function onDrop(e) {
   arrastando.value = false
-  const arquivo = e.dataTransfer.files[0]
-  processarArquivo(arquivo)
+  processarArquivo(e.dataTransfer.files[0])
 }
-
-function onInput(e) {
-  processarArquivo(e.target.files[0])
-}
+function onInput(e) { processarArquivo(e.target.files[0]) }
 </script>
 
 <template>
-  <div class="max-w-2xl mx-auto mt-12">
-    <div class="card text-center">
-      <h2 class="text-xl font-bold text-gray-700 mb-2">Importar fila de processos</h2>
-      <p class="text-gray-500 text-sm mb-6">
-        Exporte a planilha do seu sistema de gestão e arraste aqui.
-      </p>
+  <div class="max-w-2xl mx-auto mt-8">
 
+    <!-- Saudação -->
+    <div class="mb-6">
+      <h2 class="text-2xl font-bold" style="color: var(--foa-navy); font-family: 'Playfair Display', serif">
+        Olá, {{ usuario.nome.split(' ')[0] }}
+      </h2>
+      <p style="color: var(--foa-muted)" class="text-sm mt-1">
+        Importe a fila de processos para começar a gerar petições.
+      </p>
+    </div>
+
+    <div class="card">
       <!-- Zona de drop -->
       <label
-        class="block border-2 border-dashed rounded-xl p-12 cursor-pointer transition-colors"
-        :class="arrastando ? 'border-blue-500 bg-blue-50' : 'border-gray-300 hover:border-blue-400'"
+        class="block border-2 border-dashed rounded-xl p-12 cursor-pointer transition-all text-center"
+        :style="arrastando
+          ? 'border-color: var(--foa-gold); background: rgba(201,168,76,0.05)'
+          : 'border-color: var(--foa-border); background: var(--foa-gray)'"
         @dragover.prevent="arrastando = true"
         @dragleave="arrastando = false"
         @drop.prevent="onDrop"
       >
         <div v-if="!carregando">
-          <div class="text-5xl mb-3">📂</div>
-          <p class="text-gray-600 font-medium">Arraste o arquivo .xlsx aqui</p>
-          <p class="text-gray-400 text-sm mt-1">ou clique para selecionar</p>
+          <div class="text-5xl mb-4">📂</div>
+          <p class="font-semibold mb-1" style="color: var(--foa-navy)">
+            Arraste o arquivo exportado do sistema
+          </p>
+          <p class="text-sm" style="color: var(--foa-muted)">
+            ou clique para selecionar · .xls e .xlsx aceitos
+          </p>
         </div>
-        <div v-else class="text-gray-500">
-          <div class="text-4xl mb-3 animate-spin">⏳</div>
-          <p>Processando arquivo...</p>
+        <div v-else>
+          <div class="text-4xl mb-3 animate-spin inline-block">⏳</div>
+          <p style="color: var(--foa-muted)">Processando arquivo...</p>
         </div>
         <input type="file" class="hidden" accept=".xlsx,.xls" @change="onInput" />
       </label>
 
-      <!-- Erro -->
-      <p v-if="erro" class="mt-4 text-red-600 text-sm bg-red-50 rounded-lg p-3">
+      <p v-if="erro" class="mt-4 text-sm rounded-lg p-3"
+         style="color: #C0392B; background: #FDECEA">
         ❌ {{ erro }}
       </p>
+
+      <!-- Instruções -->
+      <div class="mt-6 pt-6 grid grid-cols-3 gap-4 text-center text-xs"
+           style="border-top: 1px solid var(--foa-border); color: var(--foa-muted)">
+        <div>
+          <div class="text-2xl mb-1">📤</div>
+          <p>Exporte do sistema de gestão</p>
+        </div>
+        <div>
+          <div class="text-2xl mb-1">🤖</div>
+          <p>IA gera as petições automaticamente</p>
+        </div>
+        <div>
+          <div class="text-2xl mb-1">✅</div>
+          <p>Revise, edite e baixe</p>
+        </div>
+      </div>
     </div>
   </div>
 </template>
