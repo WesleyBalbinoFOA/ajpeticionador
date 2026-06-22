@@ -6,6 +6,7 @@ import UploadZone    from './components/UploadZone.vue'
 import FilaProcessos from './components/FilaProcessos.vue'
 import FilaPeticoes  from './components/FilaPeticoes.vue'
 import Dashboard     from './components/Dashboard.vue'
+import LoadingModal  from './components/LoadingModal.vue'
 
 const usuario     = ref(null)
 const etapa       = ref('upload')
@@ -44,6 +45,7 @@ const S = {
 
 <template>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet"/>
+  <LoadingModal />
   <LoginPage v-if="!usuario" @login="onLogin" />
   <div v-else style="min-height:100vh;display:flex;flex-direction:column;background:#F4F6FA">
     <header :style="S.header">

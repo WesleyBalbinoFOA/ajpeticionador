@@ -1,5 +1,6 @@
 // frontend/src/services/api.js
 import axios from 'axios'
+import { loading } from '../stores/loading.js'
 
 // Em produção usa a URL do Render, em dev usa proxy local
 const BASE_URL = import.meta.env.VITE_API_URL
@@ -9,14 +10,16 @@ const BASE_URL = import.meta.env.VITE_API_URL
 const http = axios.create({ baseURL: BASE_URL, timeout: 60000 })
 
 http.interceptors.request.use(config => {
+  loading.start()
   const token = localStorage.getItem('peticiona_token')
   if (token) config.headers.Authorization = `Bearer ${token}`
   return config
 })
 
 http.interceptors.response.use(
-  r => r,
+  r => { loading.stop(); return r },
   err => {
+    loading.stop()
     if (err.response?.status === 401) {
       localStorage.removeItem('peticiona_token')
       localStorage.removeItem('peticiona_usuario')
