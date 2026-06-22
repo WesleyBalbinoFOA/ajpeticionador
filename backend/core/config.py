@@ -20,7 +20,7 @@ class Settings(BaseSettings):
     secret_key:   str = "dev-secret-troque-em-producao"
 
     # CORS
-    allowed_origins: str = "http://localhost:5173"
+    allowed_origins: str = "https://ajpeticionador-1.onrender.com,http://localhost:5173"
 
     # Upload
     max_upload_mb:       int = 10
